@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo da Memória - Ranking Global</title>
+    <!-- Carrega Tailwind CSS para estilização de base -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Fontes e Estilos Gerais */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f7;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .main-container {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        /* Estilo do Tabuleiro */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            max-width: 500px;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        /* Estilo do Cartão */
+        .card {
+            aspect-ratio: 1 / 1;
+            perspective: 1000px;
+            cursor: pointer;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .card-inner {
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            position: relative;
+        }
+
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card.matched {
+            pointer-events: none;
+            opacity: 0.5;
+            transition: opacity 0.5s;
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            user-select: none;
+        }
+
+        .card-back {
+            background-color: #fff;
+            transform: rotateY(180deg);
+        }
+
+        .card-front {
+            background: linear-gradient(135deg, #6366f1, #a78bfa);
+            color: #fff;
+            font-weight: bold;
+            font-size: 1.5rem;
+            line-height: 1;
+        }
+        
+        /* Estilo para Botões */
+        .game-button {
+            padding: 10px 20px;
+            border-radius: 9999px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+        }
+        .game-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Estilo da Mensagem Modal */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+            max-width: 90%;
+            width: 400px;
+        }
+        
+        /* Responsividade */
+        @media (max-width: 800px) {
+            .main-container {
+                flex-direction: column;
+            }
+            .grid-container {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1 class="text-4xl font-black text-indigo-700 mb-6">Jogo da Memória Emoji</h1>
+
+    <div class="main-container">
+        
+        <!-- Coluna do Jogo (Game Column) -->
+        <div class="w-full lg:w-3/5 p-6 bg-white rounded-2xl shadow-xl flex flex-col items-center">
+            
+            <div id="loading-message" class="text-indigo-500 mb-4 font-semibold">
+                <p>Carregando Firebase e preparando o jogo...</p>
+            </div>
+            
+            <div class="flex justify-around items-center mb-6 p-3 bg-gray-100 rounded-lg shadow-inner w-full max-w-sm">
+                <div class="text-lg font-bold text-gray-700">
+                    Tempo: <span id="time-display" class="text-indigo-600">00:00</span>
+                </div>
+            </div>
+
+            <!-- Identificador do Jogador -->
+            <div class="text-sm text-gray-500 mb-4 px-2 py-1 bg-yellow-100 rounded">
+                Seu ID: <span id="user-id-display" class="font-mono text-xs">Aguardando...</span>
+            </div>
+            
+            <div id="game-board" class="grid-container mx-auto">
+                <!-- Cartões gerados pelo JavaScript -->
+            </div>
+
+            <button id="reset-button" class="game-button bg-indigo-500 text-white hover:bg-indigo-600 mt-4" disabled>
+                Reiniciar Jogo
+            </button>
+        </div>
+
+        <!-- Coluna do Ranking (Leaderboard Column) -->
+        <div class="w-full lg:w-2/5 p-6 bg-white rounded-2xl shadow-xl">
+            <h2 class="text-2xl font-bold text-indigo-700 mb-4 border-b pb-2">🏆 Ranking Global (Top 10)</h2>
+            <div id="leaderboard-list" class="space-y-2">
+                <!-- Itens do ranking serão inseridos aqui pelo JavaScript -->
+                <p id="leaderboard-loading" class="text-gray-500">Carregando ranking...</p>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal para mensagens/fim de jogo -->
+    <div id="message-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="modal-title" class="text-3xl font-bold mb-4 text-indigo-700"></h2>
+            <p id="modal-body" class="text-gray-700 mb-6"></p>
+            <button id="modal-close-button" class="game-button bg-indigo-500 text-white hover:bg-indigo-600">
+                OK
+            </button>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        // --- Configurações do Ambiente ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        // CORREÇÃO: O nome da variável global é __initial_auth_token (com underscore)
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // --- Firebase Imports ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection,
+            addDoc,
+            onSnapshot,
+            query, 
+            limit,
+            setLogLevel 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Variáveis Globais do Jogo e Firebase ---
+        const EMOJIS = ['🍓', '🍍', '🍉', '🍇', '🥝', '🍋', '🥭', '🍒'];
+        let cards = [];
+        let firstCard = null;
+        let secondCard = null;
+        let lockBoard = false;
+        let matchesFound = 0;
+        let timer = 0;
+        let timerInterval;
+
+        let app; 
+        let db;
+        let auth;
+        let userId;
+        let isAuthReady = false;
+
+        // --- Elementos do DOM ---
+        const gameBoard = document.getElementById('game-board');
+        const timeDisplay = document.getElementById('time-display');
+        const resetButton = document.getElementById('reset-button');
+        const loadingMessage = document.getElementById('loading-message');
+        const userIdDisplay = document.getElementById('user-id-display');
+        const leaderboardList = document.getElementById('leaderboard-list');
+        const leaderboardLoading = document.getElementById('leaderboard-loading');
+        
+        const modal = document.getElementById('message-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalBody = document.getElementById('modal-body');
+        const modalCloseButton = document.getElementById('modal-close-button');
+
+        // --- Funções Auxiliares ---
+
+        /** Formata segundos para MM:SS */
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+        }
+
+        /** Exibe o modal de mensagem */
+        function showModal(title, body) {
+            modalTitle.textContent = title;
+            modalBody.textContent = body;
+            modal.style.display = 'flex';
+        }
+
+        /** Esconde o modal de mensagem */
+        function hideModal() {
+            modal.style.display = 'none';
+        }
+        
+        /** Embaralha um array */
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+        
+        // --- Lógica do Jogo ---
+
+        /** Inicia o timer do jogo */
+        function startTimer() {
+            if (timerInterval) return; // Previne múltiplos timers
+            timer = 0;
+            timerInterval = setInterval(() => {
+                timer++;
+                timeDisplay.textContent = formatTime(timer);
+            }, 1000);
+        }
+
+        /** Para o timer do jogo */
+        function stopTimer() {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+
+        /** Cria e renderiza os cartões no tabuleiro */
+        function createBoard() {
+            // Cria 2 cópias de cada emoji (total de 16 cartões)
+            const gameEmojis = [...EMOJIS, ...EMOJIS];
+            shuffle(gameEmojis);
+
+            gameBoard.innerHTML = '';
+            cards = [];
+            
+            gameEmojis.forEach((emoji, index) => {
+                const card = document.createElement('div');
+                card.classList.add('card', 'rounded-xl');
+                card.dataset.emoji = emoji;
+                card.dataset.index = index;
+
+                card.innerHTML = `
+                    <div class="card-inner">
+                        <div class="card-face card-front">?</div>
+                        <div class="card-face card-back">${emoji}</div>
+                    </div>
+                `;
+                
+                card.addEventListener('click', handleCardClick);
+                gameBoard.appendChild(card);
+                cards.push(card);
+            });
+            
+            resetButton.disabled = false;
+        }
+
+        /** Lógica de virar o cartão */
+        function handleCardClick(event) {
+            if (lockBoard) return;
+            const clickedCard = event.currentTarget;
+            if (clickedCard.classList.contains('flipped')) return; // Já virado
+
+            startTimer(); // Inicia o timer no primeiro clique
+            
+            clickedCard.classList.add('flipped');
+
+            if (!firstCard) {
+                firstCard = clickedCard;
+            } else {
+                secondCard = clickedCard;
+                lockBoard = true;
+                
+                checkForMatch();
+            }
+        }
+
+        /** Checa se os dois cartões virados são um par */
+        function checkForMatch() {
+            const isMatch = firstCard.dataset.emoji === secondCard.dataset.emoji;
+
+            isMatch ? disableCards() : unflipCards();
+        }
+
+        /** Cartões são um par, desativa e conta */
+        function disableCards() {
+            firstCard.classList.add('matched');
+            secondCard.classList.add('matched');
+            
+            matchesFound++;
+            resetBoard();
+            
+            if (matchesFound === EMOJIS.length) {
+                gameOver();
+            }
+        }
+
+        /** Cartões não são um par, desvira após um tempo */
+        function unflipCards() {
+            setTimeout(() => {
+                firstCard.classList.remove('flipped');
+                secondCard.classList.remove('flipped');
+                resetBoard();
+            }, 1000);
+        }
+
+        /** Reseta o estado da virada */
+        function resetBoard() {
+            [firstCard, secondCard, lockBoard] = [null, null, false];
+        }
+
+        /** Lógica de Fim de Jogo */
+        async function gameOver() {
+            stopTimer();
+            
+            // 1. Salva a pontuação no ranking público
+            await saveScore(timer);
+
+            // 2. Exibe mensagem
+            const message = `Parabéns! Você encontrou todos os pares em ${formatTime(timer)}! Seu resultado foi enviado para o ranking global.`;
+            showModal("Fim de Jogo!", message);
+            
+            resetGameVariables();
+        }
+
+        /** Reseta todas as variáveis do jogo para o estado inicial */
+        function resetGameVariables() {
+            stopTimer();
+            timer = 0;
+            timeDisplay.textContent = formatTime(timer);
+            matchesFound = 0;
+            resetBoard();
+            // Remove listeners antes de recriar o tabuleiro (para a próxima rodada)
+            cards.forEach(card => card.removeEventListener('click', handleCardClick)); 
+            resetButton.disabled = true;
+        }
+        
+        /** Reinicia o Jogo */
+        function resetGame() {
+             resetGameVariables();
+             createBoard();
+        }
+
+        // --- Lógica do Firebase/Firestore para Ranking ---
+
+        /** * Salva a pontuação na coleção pública de ranking.
+         * Caminho: /artifacts/{appId}/public/data/memory_leaderboard
+         */
+        async function saveScore(scoreTime) {
+            if (!isAuthReady || !db) return;
+            
+            const leaderboardPath = `/artifacts/${appId}/public/data/memory_leaderboard`;
+            const leaderboardCollection = collection(db, leaderboardPath);
+
+            try {
+                // Salva a pontuação
+                await addDoc(leaderboardCollection, {
+                    userId: userId,
+                    time: scoreTime, // Salva o tempo em segundos para ordenação
+                    timeFormatted: formatTime(scoreTime),
+                    timestamp: new Date()
+                });
+                console.log("Pontuação salva no ranking público:", scoreTime);
+            } catch (error) {
+                console.error("Erro ao salvar pontuação no ranking:", error);
+                showModal("Erro de Ranking", "Não foi possível enviar seu tempo para o placar. Tente novamente.");
+            }
+        }
+
+        /**
+         * Configura o listener em tempo real para o ranking.
+         */
+        function setupLeaderboardListener() {
+            if (!isAuthReady || !db) return;
+
+            const leaderboardPath = `/artifacts/${appId}/public/data/memory_leaderboard`;
+            const leaderboardCollection = collection(db, leaderboardPath);
+            
+            const q = query(leaderboardCollection);
+
+            onSnapshot(q, (snapshot) => {
+                leaderboardLoading.classList.add('hidden');
+                
+                let scores = [];
+                snapshot.forEach(doc => {
+                    scores.push(doc.data());
+                });
+
+                // Ordena os resultados no cliente (o menor tempo é o melhor)
+                scores.sort((a, b) => a.time - b.time);
+                
+                // Pega apenas os Top 10
+                const topScores = scores.slice(0, 10);
+
+                renderLeaderboard(topScores);
+
+            }, (error) => {
+                console.error("Erro ao ouvir ranking:", error);
+                leaderboardLoading.textContent = 'Erro ao carregar o ranking.';
+            });
+        }
+
+        /**
+         * Renderiza o ranking na tela.
+         */
+        function renderLeaderboard(scores) {
+            leaderboardList.innerHTML = ''; // Limpa a lista
+            
+            if (scores.length === 0) {
+                 leaderboardList.innerHTML = '<p class="text-gray-500">Nenhuma pontuação registrada ainda.</p>';
+                 return;
+            }
+
+            scores.forEach((score, index) => {
+                // Garante que o ID é curto, usando os primeiros 8 caracteres
+                const displayId = score.userId ? score.userId.substring(0, 8) : 'Anônimo';
+                const isCurrentUser = score.userId === userId;
+                
+                const listItem = document.createElement('div');
+                listItem.classList.add(
+                    'flex', 'justify-between', 'items-center', 'p-3', 'rounded-lg', 'font-semibold',
+                    isCurrentUser ? 'bg-yellow-100 border-2 border-yellow-400' : 'bg-gray-50'
+                );
+                
+                const rankText = `<span class="text-indigo-600 font-extrabold text-xl">${index + 1}º</span>`;
+                const userText = `<span class="text-gray-700">${displayId} ${isCurrentUser ? '(Você)' : ''}</span>`;
+                const timeText = `<span class="text-green-600">${score.timeFormatted}</span>`;
+
+                listItem.innerHTML = `${rankText} ${userText} ${timeText}`;
+                leaderboardList.appendChild(listItem);
+            });
+        }
+
+        /**
+         * Inicializa o Firebase e o Jogo
+         */
+        async function initApp() {
+            if (!firebaseConfig) {
+                console.error("Configuração do Firebase não encontrada.");
+                loadingMessage.textContent = 'Erro: Configuração do Firebase faltando.';
+                return;
+            }
+
+            try {
+                // 1. Inicialização
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setLogLevel('debug');
+
+                // 2. Autenticação e Listener
+                onAuthStateChanged(auth, async (user) => {
+                    if (!isAuthReady) {
+                         if (user) {
+                            userId = user.uid;
+                            userIdDisplay.textContent = userId;
+                            loadingMessage.classList.add('hidden');
+                            isAuthReady = true;
+                            
+                            // 3. Configurar Ranking e Iniciar Jogo
+                            setupLeaderboardListener(); // Começa a ouvir o ranking
+                            createBoard();
+                        } else {
+                            // Tenta autenticar
+                            await authenticateUser();
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error("Erro Fatal na Inicialização:", error);
+                loadingMessage.textContent = 'Erro Fatal: Falha ao conectar. Verifique o console.';
+            }
+        }
+        
+        /** Lida com a autenticação (Personalizada ou Anônima) */
+        async function authenticateUser() {
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    // Nota: Se a autenticação falhar, usamos um ID temporário.
+                    await signInAnonymously(auth); 
+                }
+            } catch (error) {
+                console.error("Erro na Autenticação:", error);
+                loadingMessage.textContent = 'Erro: Falha na autenticação. Recordes desativados.';
+                
+                // Autenticação falhou: usa um ID aleatório, mas permite que o jogo continue
+                userId = crypto.randomUUID(); 
+                userIdDisplay.textContent = userId.substring(0, 8); // Mostra apenas os primeiros 8 caracteres para o ID temporário
+                loadingMessage.classList.add('hidden');
+                isAuthReady = true;
+                
+                setupLeaderboardListener(); // Tenta carregar o ranking mesmo sem autenticação completa
+                createBoard();
+            }
+        }
+
+        // --- Event Listeners ---
+        modalCloseButton.addEventListener('click', hideModal);
+        resetButton.addEventListener('click', resetGame);
+        
+        // Inicia tudo
+        initApp();
+    </script>
+</body>
+</html>
