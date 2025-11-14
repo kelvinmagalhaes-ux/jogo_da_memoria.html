@@ -1,575 +1,418 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jogo da Memória - Ranking Global</title>
-    <!-- Carrega Tailwind CSS para estilização de base -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* Fontes e Estilos Gerais */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7f7f7;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Jogo da Memória — Emoji Royale</title>
 
-        .main-container {
-            display: flex;
-            flex-direction: row;
-            gap: 20px;
-            max-width: 1200px;
-            width: 100%;
-        }
+<!-- Tailwind CDN (apenas para utilidades rápidas; opcional) -->
+<script src="https://cdn.tailwindcss.com"></script>
 
-        /* Estilo do Tabuleiro */
-        .grid-container {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            max-width: 500px;
-            width: 100%;
-            margin-bottom: 20px;
-        }
+<style>
+  /* Fonte e reset */
+  :root{
+    --bg:#0f1724; --card:#0b1220; --accent:#7c3aed; --muted:#9aa7bf;
+    --glass: rgba(255,255,255,0.04);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;background:linear-gradient(180deg,#061021 0%, #071423 60%);color:#e6eef8;display:flex;align-items:center;justify-content:center;padding:18px}
+  .app{max-width:1100px;width:100%;display:flex;gap:18px;align-items:flex-start}
 
-        /* Estilo do Cartão */
-        .card {
-            aspect-ratio: 1 / 1;
-            perspective: 1000px;
-            cursor: pointer;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
-        }
+  /* Left column - game */
+  .panel{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:18px;border-radius:14px;box-shadow:0 10px 30px rgba(2,6,23,.6);flex:1;min-width:320px}
+  h1{font-size:20px;margin:0 0 8px 0;color:var(--accent)}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:12px}
 
-        .card-inner {
-            width: 100%;
-            height: 100%;
-            transition: transform 0.6s;
-            transform-style: preserve-3d;
-            position: relative;
-        }
+  .header-row{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .controls{display:flex;gap:8px;align-items:center}
+  input[type="text"]{padding:8px;border-radius:8px;border:0;background:rgba(255,255,255,0.03);color:inherit;width:160px}
+  select{padding:8px;border-radius:8px;border:0;background:rgba(255,255,255,0.03);color:inherit}
 
-        .card.flipped .card-inner {
-            transform: rotateY(180deg);
-        }
+  /* board */
+  .board-wrap{display:flex;gap:18px;flex-direction:column;align-items:center}
+  .grid{display:grid;grid-template-columns:repeat(4, 86px);gap:12px;justify-content:center;background:transparent}
+  .card{width:86px;height:86px;perspective:900px;border-radius:10px;cursor:pointer}
+  .card-inner{position:relative;width:100%;height:100%;transition:transform .6s;transform-style:preserve-3d;border-radius:10px}
+  .card.flipped .card-inner{transform:rotateY(180deg)}
+  .face{position:absolute;inset:0;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:32px;backface-visibility:hidden;user-select:none}
+  .face.front{background:linear-gradient(135deg,#0b1220, #0f1b2a); color:#cdd9ff; font-weight:700; transform:rotateY(180deg)}
+  .face.back{background:var(--accent); color:white; font-size:28px}
 
-        .card.matched {
-            pointer-events: none;
-            opacity: 0.5;
-            transition: opacity 0.5s;
-        }
+  /* card back variants (skins) */
+  .skin-dot .face.front{background: linear-gradient(135deg,#111827,#0b1220); background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px); background-size:14px 14px;}
+  .skin-lines .face.front{background: linear-gradient(135deg,#081025, #0b1630); background-image: linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px); background-size:6px 6px;}
+  .skin-plain .face.front{background:linear-gradient(135deg,#08203a,#0b1230)}
 
-        .card-face {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            backface-visibility: hidden;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.5rem;
-            user-select: none;
-        }
+  /* HUD */
+  .hud{display:flex;gap:10px;align-items:center;margin-top:12px}
+  .chip{background:var(--glass);padding:8px 10px;border-radius:999px;font-weight:600;color:var(--muted);font-size:13px}
 
-        .card-back {
-            background-color: #fff;
-            transform: rotateY(180deg);
-        }
+  /* leaderboard */
+  .panel-right{width:340px;min-width:260px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:18px;border-radius:14px;box-shadow:0 10px 30px rgba(2,6,23,.6)}
+  .leaderboard-item{display:flex;justify-content:space-between;padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);margin-bottom:8px}
+  .you{border:2px solid #ffd166;background:linear-gradient(90deg,#2b2b2b55,#ffffff07)}
 
-        .card-front {
-            background: linear-gradient(135deg, #6366f1, #a78bfa);
-            color: #fff;
-            font-weight: bold;
-            font-size: 1.5rem;
-            line-height: 1;
-        }
-        
-        /* Estilo para Botões */
-        .game-button {
-            padding: 10px 20px;
-            border-radius: 9999px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
-        }
-        .game-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15);
-        }
+  /* modal */
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,0.6);z-index:40}
+  .modal .box{background:linear-gradient(180deg,#071423,#081826);padding:20px;border-radius:12px;text-align:center;max-width:420px}
 
-        /* Estilo da Mensagem Modal */
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.6);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        .modal-content {
-            background: white;
-            padding: 30px;
-            border-radius: 16px;
-            text-align: center;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-            max-width: 90%;
-            width: 400px;
-        }
-        
-        /* Responsividade */
-        @media (max-width: 800px) {
-            .main-container {
-                flex-direction: column;
-            }
-            .grid-container {
-                max-width: 100%;
-            }
-        }
-    </style>
+  /* confetti canvas */
+  #confettiCanvas{position:fixed;left:0;top:0;pointer-events:none;z-index:30}
+
+  /* small */
+  .muted{color:var(--muted);font-size:13px}
+  button.btn{background:linear-gradient(90deg,#7c3aed,#5b21b6);color:white;padding:10px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:700}
+  button.btn.alt{background:transparent;border:1px solid rgba(255,255,255,0.06)}
+  footer{margin-top:12px;color:var(--muted);font-size:13px;text-align:center}
+  @media(max-width:920px){.app{flex-direction:column}.panel-right{width:100%}}
+</style>
 </head>
 <body>
+<div class="app">
 
-    <h1 class="text-4xl font-black text-indigo-700 mb-6">Jogo da Memória Emoji</h1>
-
-    <div class="main-container">
-        
-        <!-- Coluna do Jogo (Game Column) -->
-        <div class="w-full lg:w-3/5 p-6 bg-white rounded-2xl shadow-xl flex flex-col items-center">
-            
-            <div id="loading-message" class="text-indigo-500 mb-4 font-semibold">
-                <p>Carregando Firebase e preparando o jogo...</p>
-            </div>
-            
-            <div class="flex justify-around items-center mb-6 p-3 bg-gray-100 rounded-lg shadow-inner w-full max-w-sm">
-                <div class="text-lg font-bold text-gray-700">
-                    Tempo: <span id="time-display" class="text-indigo-600">00:00</span>
-                </div>
-            </div>
-
-            <!-- Identificador do Jogador -->
-            <div class="text-sm text-gray-500 mb-4 px-2 py-1 bg-yellow-100 rounded">
-                Seu ID: <span id="user-id-display" class="font-mono text-xs">Aguardando...</span>
-            </div>
-            
-            <div id="game-board" class="grid-container mx-auto">
-                <!-- Cartões gerados pelo JavaScript -->
-            </div>
-
-            <button id="reset-button" class="game-button bg-indigo-500 text-white hover:bg-indigo-600 mt-4" disabled>
-                Reiniciar Jogo
-            </button>
-        </div>
-
-        <!-- Coluna do Ranking (Leaderboard Column) -->
-        <div class="w-full lg:w-2/5 p-6 bg-white rounded-2xl shadow-xl">
-            <h2 class="text-2xl font-bold text-indigo-700 mb-4 border-b pb-2">🏆 Ranking Global (Top 10)</h2>
-            <div id="leaderboard-list" class="space-y-2">
-                <!-- Itens do ranking serão inseridos aqui pelo JavaScript -->
-                <p id="leaderboard-loading" class="text-gray-500">Carregando ranking...</p>
-            </div>
-        </div>
+  <!-- Game Panel -->
+  <div class="panel">
+    <div class="header-row">
+      <div>
+        <h1>Jogo da Memória — Emoji Royale</h1>
+        <div class="sub">Derrote o tempo — personalize o visual — compartilhe seus recordes</div>
+      </div>
+      <div class="controls">
+        <input id="playerName" type="text" placeholder="@seunome" />
+        <select id="skinSelect" title="Skin do verso do cartão">
+          <option value="skin-dot">Padrão (punk)</option>
+          <option value="skin-lines">Linhas</option>
+          <option value="skin-plain">Sutil</option>
+        </select>
+        <button id="startBtn" class="btn">Começar</button>
+      </div>
     </div>
 
+    <div class="board-wrap">
+      <div class="hud">
+        <div class="chip">Tempo: <span id="timeDisplay">00:00</span></div>
+        <div class="chip">Tentativas: <span id="attemptsDisplay">0</span></div>
+        <div class="chip">Melhor: <span id="bestDisplay">--:--</span></div>
+      </div>
 
-    <!-- Modal para mensagens/fim de jogo -->
-    <div id="message-modal" class="modal">
-        <div class="modal-content">
-            <h2 id="modal-title" class="text-3xl font-bold mb-4 text-indigo-700"></h2>
-            <p id="modal-body" class="text-gray-700 mb-6"></p>
-            <button id="modal-close-button" class="game-button bg-indigo-500 text-white hover:bg-indigo-600">
-                OK
-            </button>
-        </div>
+      <div id="grid" class="grid mt-4"></div>
+
+      <div style="margin-top:14px;display:flex;gap:8px;justify-content:center">
+        <button id="resetBtn" class="btn alt">Reiniciar</button>
+        <button id="shareBtn" class="btn">Compartilhar resultado</button>
+      </div>
     </div>
 
-    <!-- Firebase SDKs -->
-    <script type="module">
-        // --- Configurações do Ambiente ---
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        // CORREÇÃO: O nome da variável global é __initial_auth_token (com underscore)
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+    <footer class="muted">Salvo localmente no seu navegador. Para tornar público, compartilhe o link no Instagram.</footer>
+  </div>
 
-        // --- Firebase Imports ---
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { 
-            getFirestore, 
-            collection,
-            addDoc,
-            onSnapshot,
-            query, 
-            limit,
-            setLogLevel 
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  <!-- Right Panel: Leaderboard + dicas -->
+  <div class="panel-right">
+    <h2 style="margin:0 0 8px 0;color:var(--accent)">🏆 Ranking Local (Top 10)</h2>
+    <div id="leaderboard"></div>
 
-        // --- Variáveis Globais do Jogo e Firebase ---
-        const EMOJIS = ['🍓', '🍍', '🍉', '🍇', '🥝', '🍋', '🥭', '🍒'];
-        let cards = [];
-        let firstCard = null;
-        let secondCard = null;
-        let lockBoard = false;
-        let matchesFound = 0;
-        let timer = 0;
-        let timerInterval;
+    <div style="margin-top:12px">
+      <h3 style="margin:0 0 6px 0;color:#cde3ff">Dicas Rápidas</h3>
+      <ul style="margin:0;padding-left:18px;color:var(--muted)">
+        <li>Use skin diferente para criar vídeos com estética nova.</li>
+        <li>Compartilhe seu melhor tempo nos Stories e marque a conta.</li>
+        <li>Faça vídeos mostrando o "antes/depois" do cartão vencedor.</li>
+      </ul>
+    </div>
+  </div>
+</div>
 
-        let app; 
-        let db;
-        let auth;
-        let userId;
-        let isAuthReady = false;
+<!-- modal -->
+<div id="modal" class="modal"><div class="box">
+  <h3 id="modalTitle"></h3>
+  <p id="modalMsg" class="muted"></p>
+  <div style="margin-top:12px"><button id="modalOK" class="btn">Fechar</button></div>
+</div></div>
 
-        // --- Elementos do DOM ---
-        const gameBoard = document.getElementById('game-board');
-        const timeDisplay = document.getElementById('time-display');
-        const resetButton = document.getElementById('reset-button');
-        const loadingMessage = document.getElementById('loading-message');
-        const userIdDisplay = document.getElementById('user-id-display');
-        const leaderboardList = document.getElementById('leaderboard-list');
-        const leaderboardLoading = document.getElementById('leaderboard-loading');
-        
-        const modal = document.getElementById('message-modal');
-        const modalTitle = document.getElementById('modal-title');
-        const modalBody = document.getElementById('modal-body');
-        const modalCloseButton = document.getElementById('modal-close-button');
+<!-- confetti canvas -->
+<canvas id="confettiCanvas"></canvas>
 
-        // --- Funções Auxiliares ---
+<script>
+/* =========================
+   Jogo da Memória — versão offline melhorada
+   - Ranking local (localStorage)
+   - Skins para verso do cartão
+   - SFX via WebAudio
+   - Confetti canvas
+   - Fácil de personalizar
+   ========================= */
 
-        /** Formata segundos para MM:SS */
-        function formatTime(seconds) {
-            const minutes = Math.floor(seconds / 60);
-            const remainingSeconds = seconds % 60;
-            return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+(() => {
+  // Config
+  const EMOJIS = ['🍓','🍍','🍉','🍇','🥝','🍋','🥭','🍒']; // 8 pares => 16 cartas
+  const STORAGE_KEY = 'mem_royale_leaderboard_v1';
+  const BEST_KEY = 'mem_royale_best';
+  const GRID_SIZE = 4; // 4x4
+  const confettiCanvas = document.getElementById('confettiCanvas');
+
+  // State
+  let gridEl = document.getElementById('grid');
+  let timeDisplay = document.getElementById('timeDisplay');
+  let attemptsDisplay = document.getElementById('attemptsDisplay');
+  let bestDisplay = document.getElementById('bestDisplay');
+  let playerNameInput = document.getElementById('playerName');
+  let skinSelect = document.getElementById('skinSelect');
+
+  let startBtn = document.getElementById('startBtn');
+  let resetBtn = document.getElementById('resetBtn');
+  let shareBtn = document.getElementById('shareBtn');
+
+  let modal = document.getElementById('modal');
+  let modalTitle = document.getElementById('modalTitle');
+  let modalMsg = document.getElementById('modalMsg');
+  let modalOK = document.getElementById('modalOK');
+
+  let leaderEl = document.getElementById('leaderboard');
+
+  // gameplay state
+  let cards = [];
+  let first = null, second = null;
+  let lock = false;
+  let matches = 0;
+  let attempts = 0;
+  let timer = 0; let timerId = null;
+  let started = false;
+
+  // audio
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  const audioCtx = AudioCtx ? new AudioCtx() : null;
+
+  // init confetti canvas
+  confettiCanvas.width = window.innerWidth;
+  confettiCanvas.height = window.innerHeight;
+  window.addEventListener('resize', ()=>{ confettiCanvas.width = window.innerWidth; confettiCanvas.height = window.innerHeight; });
+
+  // --- utility ---
+  function formatTime(sec){
+    const m = Math.floor(sec/60); const s = sec%60;
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+  function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+
+  // --- SFX simple (beep) ---
+  function beep(freq = 440, length=0.06, type='sine', vol=0.12){
+    if(!audioCtx) return;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.value = vol;
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start();
+    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + length);
+    setTimeout(()=>{try{o.stop()}catch(e){}}, length*1000 + 20);
+  }
+
+  // confetti (simple particles)
+  function runConfetti(){
+    const ctx = confettiCanvas.getContext('2d');
+    const W = confettiCanvas.width, H = confettiCanvas.height;
+    const particles = [];
+    const colors = ['#ffd166','#06d6a0','#118ab2','#ef476f','#f9c74f','#90be6d'];
+    for(let i=0;i<80;i++){
+      particles.push({
+        x: rand(0,W), y: rand(-200, -20),
+        vx: rand(-200,200)/100, vy: rand(50,200)/100,
+        size: rand(6,12), color: colors[rand(0,colors.length-1)], rot: Math.random()*360, vr: (Math.random()-0.5)*6
+      });
+    }
+    let t0 = performance.now();
+    function frame(now){
+      const dt = (now - t0) / 1000; t0 = now;
+      ctx.clearRect(0,0,W,H);
+      for(let p of particles){
+        p.x += p.vx * dt * 60;
+        p.y += p.vy * dt * 60;
+        p.rot += p.vr * dt * 30;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot * Math.PI/180);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size*0.6);
+        ctx.restore();
+      }
+      // remove if all below screen
+      if(particles.every(p=>p.y > H + 50)){
+        // stop
+      } else requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // --- Leaderboard (localStorage) ---
+  function loadLeaderboard(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    }catch(e){ return [];}
+  }
+  function saveLeaderboard(list){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  }
+  function addScore(name, seconds){
+    const list = loadLeaderboard();
+    list.push({name: name || 'Anon', time: seconds, at: Date.now()});
+    list.sort((a,b)=>a.time - b.time);
+    // keep top 50 to avoid bloat
+    const trimmed = list.slice(0,50);
+    saveLeaderboard(trimmed);
+    renderLeaderboard();
+  }
+  function renderLeaderboard(){
+    const list = loadLeaderboard();
+    const best = list[0];
+    bestDisplay.textContent = best ? formatTime(best.time) : '--:--';
+    leaderEl.innerHTML = '';
+    const top = list.slice(0,10);
+    if(top.length === 0){
+      leaderEl.innerHTML = '<div class="muted">Nenhuma pontuação registrada ainda. Seja o primeiro!</div>';
+      return;
+    }
+    top.forEach((it, idx) => {
+      const row = document.createElement('div');
+      row.className = 'leaderboard-item ' + (idx===0 ? 'you' : '');
+      row.innerHTML = `<div style="display:flex;gap:8px;align-items:center"><div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(90deg,#7c3aed,#5b21b6);display:flex;align-items:center;justify-content:center;font-weight:800">${idx+1}</div><div><div style="font-weight:700">${it.name}</div><div class="muted" style="font-size:12px">${new Date(it.at).toLocaleString()}</div></div></div><div style="font-weight:800">${formatTime(it.time)}</div>`;
+      leaderEl.appendChild(row);
+    });
+  }
+
+  // --- Game functions ---
+  function createGrid(){
+    gridEl.innerHTML = '';
+    const skin = skinSelect.value || 'skin-dot';
+    gridEl.className = 'grid mt-4 ' + skin;
+    // prepare emojis
+    const arr = [...EMOJIS, ...EMOJIS];
+    // shuffle
+    for(let i=arr.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1)); [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    cards = [];
+    arr.forEach((emoji, idx) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.dataset.emoji = emoji;
+      card.dataset.index = idx;
+      card.innerHTML = `<div class="card-inner"><div class="face front">?</div><div class="face back">${emoji}</div></div>`;
+      card.addEventListener('click', onCardClick);
+      gridEl.appendChild(card);
+      cards.push(card);
+    });
+  }
+
+  function startTimer(){
+    if(timerId) return;
+    timer = 0; timeDisplay.textContent = formatTime(timer);
+    timerId = setInterval(()=>{ timer++; timeDisplay.textContent = formatTime(timer); }, 1000);
+  }
+  function stopTimer(){ if(timerId){ clearInterval(timerId); timerId=null; } }
+
+  function onCardClick(e){
+    if(lock) return;
+    const card = e.currentTarget;
+    if(card.classList.contains('flipped')) return;
+    if(!started){ started=true; startTimer(); }
+    // flip
+    card.classList.add('flipped');
+    beep(860,0.04,'sine',0.06);
+    if(!first) first = card;
+    else { second = card; lock = true; attempts++; attemptsDisplay.textContent = attempts; checkMatch(); }
+  }
+
+  function checkMatch(){
+    setTimeout(()=>{
+      if(first.dataset.emoji === second.dataset.emoji){
+        // matched
+        first.classList.add('matched'); second.classList.add('matched');
+        matches++;
+        beep(1200,0.06,'triangle',0.08);
+        // small scale animation
+        [first, second].forEach(c => { c.style.transform='scale(1.03)'; setTimeout(()=>c.style.transform='',250); });
+        resetSelection();
+        if(matches === EMOJIS.length){
+          // win
+          stopTimer();
+          const name = playerNameInput.value || 'Anon';
+          addScore(name, timer);
+          showWinModal(name, timer);
+          // confetti & sfx
+          runConfetti();
+          beep(520,0.12,'sine',0.12);
         }
+      } else {
+        // not matched
+        beep(220,0.08,'sawtooth',0.08);
+        setTimeout(()=>{ first.classList.remove('flipped'); second.classList.remove('flipped'); resetSelection(); }, 700);
+      }
+    }, 350);
+  }
+  function resetSelection(){ [first, second] = [null, null]; lock = false; }
 
-        /** Exibe o modal de mensagem */
-        function showModal(title, body) {
-            modalTitle.textContent = title;
-            modalBody.textContent = body;
-            modal.style.display = 'flex';
-        }
+  function resetGame(full=false){
+    stopTimer(); started=false; matches=0; attempts=0; attemptsDisplay.textContent = attempts;
+    // unbind and clear
+    if(cards && cards.length) cards.forEach(c=>{ c.classList.remove('flipped','matched'); c.removeEventListener('click', onCardClick); });
+    createGrid();
+    if(!full){ /* small delay to allow UI */ setTimeout(()=>{cards.forEach(c=>c.addEventListener('click', onCardClick));},50); }
+    else { /* full reset */ }
+  }
 
-        /** Esconde o modal de mensagem */
-        function hideModal() {
-            modal.style.display = 'none';
-        }
-        
-        /** Embaralha um array */
-        function shuffle(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
-        }
-        
-        // --- Lógica do Jogo ---
+  function showWinModal(name, timeSec){
+    modalTitle.textContent = `Parabéns, ${name}!`;
+    modalMsg.textContent = `Você terminou em ${formatTime(timeSec)}. Resultado salvo no ranking local.`;
+    modal.style.display = 'flex';
+  }
 
-        /** Inicia o timer do jogo */
-        function startTimer() {
-            if (timerInterval) return; // Previne múltiplos timers
-            timer = 0;
-            timerInterval = setInterval(() => {
-                timer++;
-                timeDisplay.textContent = formatTime(timer);
-            }, 1000);
-        }
+  // share (generate text + copy to clipboard)
+  async function shareResult(){
+    const best = loadLeaderboard()[0];
+    const txt = best ? `Meu melhor no Memory Emoji: ${formatTime(best.time)}! Jogue também: (coloque seu link aqui)` : `Jogue o Memory Emoji!`;
+    try{
+      await navigator.clipboard.writeText(txt);
+      modalTitle.textContent = 'Compartilhar';
+      modalMsg.textContent = 'Texto copiado para a área de transferência. Cole nos Stories ou legendas.';
+      modal.style.display = 'flex';
+    }catch(e){
+      modalTitle.textContent = 'Compartilhar';
+      modalMsg.textContent = 'Não foi possível copiar automaticamente. Seu navegador não permite. Faça manualmente.';
+      modal.style.display = 'flex';
+    }
+  }
 
-        /** Para o timer do jogo */
-        function stopTimer() {
-            clearInterval(timerInterval);
-            timerInterval = null;
-        }
+  // bind UI
+  startBtn.addEventListener('click', ()=>{
+    resetGame();
+    // small UX: flip all cards briefly to show positions
+    cards.forEach(c=>c.classList.add('flipped'));
+    setTimeout(()=>cards.forEach(c=>c.classList.remove('flipped')), 900);
+  });
+  resetBtn.addEventListener('click', ()=>{ resetGame(true); });
+  shareBtn.addEventListener('click', shareResult);
 
-        /** Cria e renderiza os cartões no tabuleiro */
-        function createBoard() {
-            // Cria 2 cópias de cada emoji (total de 16 cartões)
-            const gameEmojis = [...EMOJIS, ...EMOJIS];
-            shuffle(gameEmojis);
+  modalOK.addEventListener('click', ()=>{ modal.style.display='none'; });
 
-            gameBoard.innerHTML = '';
-            cards = [];
-            
-            gameEmojis.forEach((emoji, index) => {
-                const card = document.createElement('div');
-                card.classList.add('card', 'rounded-xl');
-                card.dataset.emoji = emoji;
-                card.dataset.index = index;
+  // init
+  renderLeaderboard();
+  // show best if exists
+  const storedBest = loadLeaderboard()[0];
+  bestDisplay.textContent = storedBest ? formatTime(storedBest.time) : '--:--';
 
-                card.innerHTML = `
-                    <div class="card-inner">
-                        <div class="card-face card-front">?</div>
-                        <div class="card-face card-back">${emoji}</div>
-                    </div>
-                `;
-                
-                card.addEventListener('click', handleCardClick);
-                gameBoard.appendChild(card);
-                cards.push(card);
-            });
-            
-            resetButton.disabled = false;
-        }
+  // initial grid
+  createGrid();
 
-        /** Lógica de virar o cartão */
-        function handleCardClick(event) {
-            if (lockBoard) return;
-            const clickedCard = event.currentTarget;
-            if (clickedCard.classList.contains('flipped')) return; // Já virado
+  // accessibility: allow Enter key on name to start
+  playerNameInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') startBtn.click(); });
 
-            startTimer(); // Inicia o timer no primeiro clique
-            
-            clickedCard.classList.add('flipped');
+  // small hint: on first user interaction, resume audio context if necessary
+  document.addEventListener('click', ()=>{ if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); }, {once:true});
 
-            if (!firstCard) {
-                firstCard = clickedCard;
-            } else {
-                secondCard = clickedCard;
-                lockBoard = true;
-                
-                checkForMatch();
-            }
-        }
-
-        /** Checa se os dois cartões virados são um par */
-        function checkForMatch() {
-            const isMatch = firstCard.dataset.emoji === secondCard.dataset.emoji;
-
-            isMatch ? disableCards() : unflipCards();
-        }
-
-        /** Cartões são um par, desativa e conta */
-        function disableCards() {
-            firstCard.classList.add('matched');
-            secondCard.classList.add('matched');
-            
-            matchesFound++;
-            resetBoard();
-            
-            if (matchesFound === EMOJIS.length) {
-                gameOver();
-            }
-        }
-
-        /** Cartões não são um par, desvira após um tempo */
-        function unflipCards() {
-            setTimeout(() => {
-                firstCard.classList.remove('flipped');
-                secondCard.classList.remove('flipped');
-                resetBoard();
-            }, 1000);
-        }
-
-        /** Reseta o estado da virada */
-        function resetBoard() {
-            [firstCard, secondCard, lockBoard] = [null, null, false];
-        }
-
-        /** Lógica de Fim de Jogo */
-        async function gameOver() {
-            stopTimer();
-            
-            // 1. Salva a pontuação no ranking público
-            await saveScore(timer);
-
-            // 2. Exibe mensagem
-            const message = `Parabéns! Você encontrou todos os pares em ${formatTime(timer)}! Seu resultado foi enviado para o ranking global.`;
-            showModal("Fim de Jogo!", message);
-            
-            resetGameVariables();
-        }
-
-        /** Reseta todas as variáveis do jogo para o estado inicial */
-        function resetGameVariables() {
-            stopTimer();
-            timer = 0;
-            timeDisplay.textContent = formatTime(timer);
-            matchesFound = 0;
-            resetBoard();
-            // Remove listeners antes de recriar o tabuleiro (para a próxima rodada)
-            cards.forEach(card => card.removeEventListener('click', handleCardClick)); 
-            resetButton.disabled = true;
-        }
-        
-        /** Reinicia o Jogo */
-        function resetGame() {
-             resetGameVariables();
-             createBoard();
-        }
-
-        // --- Lógica do Firebase/Firestore para Ranking ---
-
-        /** * Salva a pontuação na coleção pública de ranking.
-         * Caminho: /artifacts/{appId}/public/data/memory_leaderboard
-         */
-        async function saveScore(scoreTime) {
-            if (!isAuthReady || !db) return;
-            
-            const leaderboardPath = `/artifacts/${appId}/public/data/memory_leaderboard`;
-            const leaderboardCollection = collection(db, leaderboardPath);
-
-            try {
-                // Salva a pontuação
-                await addDoc(leaderboardCollection, {
-                    userId: userId,
-                    time: scoreTime, // Salva o tempo em segundos para ordenação
-                    timeFormatted: formatTime(scoreTime),
-                    timestamp: new Date()
-                });
-                console.log("Pontuação salva no ranking público:", scoreTime);
-            } catch (error) {
-                console.error("Erro ao salvar pontuação no ranking:", error);
-                showModal("Erro de Ranking", "Não foi possível enviar seu tempo para o placar. Tente novamente.");
-            }
-        }
-
-        /**
-         * Configura o listener em tempo real para o ranking.
-         */
-        function setupLeaderboardListener() {
-            if (!isAuthReady || !db) return;
-
-            const leaderboardPath = `/artifacts/${appId}/public/data/memory_leaderboard`;
-            const leaderboardCollection = collection(db, leaderboardPath);
-            
-            const q = query(leaderboardCollection);
-
-            onSnapshot(q, (snapshot) => {
-                leaderboardLoading.classList.add('hidden');
-                
-                let scores = [];
-                snapshot.forEach(doc => {
-                    scores.push(doc.data());
-                });
-
-                // Ordena os resultados no cliente (o menor tempo é o melhor)
-                scores.sort((a, b) => a.time - b.time);
-                
-                // Pega apenas os Top 10
-                const topScores = scores.slice(0, 10);
-
-                renderLeaderboard(topScores);
-
-            }, (error) => {
-                console.error("Erro ao ouvir ranking:", error);
-                leaderboardLoading.textContent = 'Erro ao carregar o ranking.';
-            });
-        }
-
-        /**
-         * Renderiza o ranking na tela.
-         */
-        function renderLeaderboard(scores) {
-            leaderboardList.innerHTML = ''; // Limpa a lista
-            
-            if (scores.length === 0) {
-                 leaderboardList.innerHTML = '<p class="text-gray-500">Nenhuma pontuação registrada ainda.</p>';
-                 return;
-            }
-
-            scores.forEach((score, index) => {
-                // Garante que o ID é curto, usando os primeiros 8 caracteres
-                const displayId = score.userId ? score.userId.substring(0, 8) : 'Anônimo';
-                const isCurrentUser = score.userId === userId;
-                
-                const listItem = document.createElement('div');
-                listItem.classList.add(
-                    'flex', 'justify-between', 'items-center', 'p-3', 'rounded-lg', 'font-semibold',
-                    isCurrentUser ? 'bg-yellow-100 border-2 border-yellow-400' : 'bg-gray-50'
-                );
-                
-                const rankText = `<span class="text-indigo-600 font-extrabold text-xl">${index + 1}º</span>`;
-                const userText = `<span class="text-gray-700">${displayId} ${isCurrentUser ? '(Você)' : ''}</span>`;
-                const timeText = `<span class="text-green-600">${score.timeFormatted}</span>`;
-
-                listItem.innerHTML = `${rankText} ${userText} ${timeText}`;
-                leaderboardList.appendChild(listItem);
-            });
-        }
-
-        /**
-         * Inicializa o Firebase e o Jogo
-         */
-        async function initApp() {
-            if (!firebaseConfig) {
-                console.error("Configuração do Firebase não encontrada.");
-                loadingMessage.textContent = 'Erro: Configuração do Firebase faltando.';
-                return;
-            }
-
-            try {
-                // 1. Inicialização
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                setLogLevel('debug');
-
-                // 2. Autenticação e Listener
-                onAuthStateChanged(auth, async (user) => {
-                    if (!isAuthReady) {
-                         if (user) {
-                            userId = user.uid;
-                            userIdDisplay.textContent = userId;
-                            loadingMessage.classList.add('hidden');
-                            isAuthReady = true;
-                            
-                            // 3. Configurar Ranking e Iniciar Jogo
-                            setupLeaderboardListener(); // Começa a ouvir o ranking
-                            createBoard();
-                        } else {
-                            // Tenta autenticar
-                            await authenticateUser();
-                        }
-                    }
-                });
-
-            } catch (error) {
-                console.error("Erro Fatal na Inicialização:", error);
-                loadingMessage.textContent = 'Erro Fatal: Falha ao conectar. Verifique o console.';
-            }
-        }
-        
-        /** Lida com a autenticação (Personalizada ou Anônima) */
-        async function authenticateUser() {
-            try {
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    // Nota: Se a autenticação falhar, usamos um ID temporário.
-                    await signInAnonymously(auth); 
-                }
-            } catch (error) {
-                console.error("Erro na Autenticação:", error);
-                loadingMessage.textContent = 'Erro: Falha na autenticação. Recordes desativados.';
-                
-                // Autenticação falhou: usa um ID aleatório, mas permite que o jogo continue
-                userId = crypto.randomUUID(); 
-                userIdDisplay.textContent = userId.substring(0, 8); // Mostra apenas os primeiros 8 caracteres para o ID temporário
-                loadingMessage.classList.add('hidden');
-                isAuthReady = true;
-                
-                setupLeaderboardListener(); // Tenta carregar o ranking mesmo sem autenticação completa
-                createBoard();
-            }
-        }
-
-        // --- Event Listeners ---
-        modalCloseButton.addEventListener('click', hideModal);
-        resetButton.addEventListener('click', resetGame);
-        
-        // Inicia tudo
-        initApp();
-    </script>
+  // expose for console debugging (optional)
+  window._memGame = {resetGame, createGrid, addScore, loadLeaderboard};
+})();
+</script>
 </body>
 </html>
